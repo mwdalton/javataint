@@ -5,10 +5,6 @@ source version.sh
 
 for file in `ls run*.sh`
 do
-        if [ -z "$is_jrockit" ] && [ "$file" == "run_jrockit.sh" ]; then
-                continue;
-        fi
-
         echo "Running $file"
         fname="test.${file}.log"
         ./${file} >& $fname
