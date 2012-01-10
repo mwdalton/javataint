@@ -1,0 +1,344 @@
+diff --git a/log4j-1.2.15.jar b/log4j-1.2.15.jar
+deleted file mode 100644
+index c930a6a..0000000
+Binary files a/log4j-1.2.15.jar and /dev/null differ
+diff --git a/src/main/java/org/apache/log4j/LogManager.java b/src/main/java/org/apache/log4j/LogManager.java
+index 199d15f..12b09f4 100644
+--- a/src/main/java/org/apache/log4j/LogManager.java
++++ b/src/main/java/org/apache/log4j/LogManager.java
+@@ -27,10 +27,14 @@ import org.apache.log4j.helpers.Loader;
+ import org.apache.log4j.helpers.OptionConverter;
+ import org.apache.log4j.helpers.LogLog;
+ 
++import java.io.BufferedReader;
++import java.io.InputStream;
++import java.io.InputStreamReader;
++import java.io.File;
++
+ import java.net.URL;
+ import java.net.MalformedURLException;
+ 
+-
+ import java.util.Enumeration;
+ 
+ /**
+@@ -52,26 +56,6 @@ public class LogManager {
+   
+   static final String DEFAULT_XML_CONFIGURATION_FILE = "log4j.xml";  
+    
+-  /**
+-   * @deprecated This variable is for internal use only. It will
+-   * become private in future versions.
+-   * */
+-  static final public String DEFAULT_CONFIGURATION_KEY="log4j.configuration";
+-
+-  /**
+-   * @deprecated This variable is for internal use only. It will
+-   * become private in future versions.
+-   * */
+-  static final public String CONFIGURATOR_CLASS_KEY="log4j.configuratorClass";
+-
+-  /**
+-  * @deprecated This variable is for internal use only. It will
+-  * become private in future versions.
+-  */
+-  public static final String DEFAULT_INIT_OVERRIDE_KEY = 
+-                                                 "log4j.defaultInitOverride";
+-
+-
+   static private Object guard = null;
+   static private RepositorySelector repositorySelector;
+ 
+@@ -80,58 +64,63 @@ public class LogManager {
+     Hierarchy h = new Hierarchy(new RootLogger((Level) Level.DEBUG));
+     repositorySelector = new DefaultRepositorySelector(h);
+ 
+-    /** Search for the properties file log4j.properties in the CLASSPATH.  */
+-    String override =OptionConverter.getSystemProperty(DEFAULT_INIT_OVERRIDE_KEY,
+-						       null);
+-
+     // if there is no default init override, then get the resource
+     // specified by the user or the default config file.
+-    if(override == null || "false".equalsIgnoreCase(override)) {
+-
+-      String configurationOptionStr = OptionConverter.getSystemProperty(
+-							  DEFAULT_CONFIGURATION_KEY, 
+-							  null);
+-
+-      String configuratorClassName = OptionConverter.getSystemProperty(
+-                                                   CONFIGURATOR_CLASS_KEY, 
+-						   null);
+-
+-      URL url = null;
+-
+-      // if the user has not specified the log4j.configuration
+-      // property, we search first for the file "log4j.xml" and then
+-      // "log4j.properties"
+-      if(configurationOptionStr == null) {	
+-	url = Loader.getResource(DEFAULT_XML_CONFIGURATION_FILE);
+-	if(url == null) {
+-	  url = Loader.getResource(DEFAULT_CONFIGURATION_FILE);
+-	}
+-      } else {
+-	try {
+-	  url = new URL(configurationOptionStr);
+-	} catch (MalformedURLException ex) {
+-	  // so, resource is not a URL:
+-	  // attempt to get the resource from the class path
+-	  url = Loader.getResource(configurationOptionStr); 
+-	}	
+-      }
++    URL url = null;
++    String base = null;
++
++    // if the user has not specified the log4j.configuration
++    // property, we search first for the file "log4j.xml" and then
++    // "log4j.properties"
++    
++    try {
++        String logLevel = System.getProperty("siegebreaker.loglog.level");
++        if ("debug".equals(logLevel)) 
++            LogLog.setInternalDebugging(true);
++        else if ("error".equals(logLevel))
++            LogLog.setSuppressMode(true);
++        else if ("off".equals(logLevel))
++            LogLog.setQuietMode(true);
++        else if(!"warning".equals(logLevel) && logLevel != null)
++            LogLog.warn("Property siegebreaker.loglog.level has unknown value "
++                         + logLevel);
++
++        ClassLoader cl = ClassLoader.getSystemClassLoader();
++        InputStream is = cl.getResourceAsStream("com/siegebrk/InstallPath");
++        if (is == null)
++            throw new RuntimeException("SiegeBreaker installation corrupted");
++        BufferedReader br = new BufferedReader(new InputStreamReader(is));
++        base = br.readLine();
++        br.close();
++
++        if (base == null)
++            throw new RuntimeException("Could not find SiegeBreaker install");
++        File f = new File(base+File.separator+DEFAULT_XML_CONFIGURATION_FILE);
++        if (f.exists())
++            url = f.toURL();
++        else {
++            f = new File(base+File.separator+DEFAULT_CONFIGURATION_FILE);
++            if (f.exists()) url = f.toURL();
++        }
++    } catch (Throwable th) {
++        LogLog.warn("Error during default initialization", th);
++    }
+       
+-      // If we have a non-null url, then delegate the rest of the
+-      // configuration to the OptionConverter.selectAndConfigure
+-      // method.
+-      if(url != null) {
+-	    LogLog.debug("Using URL ["+url+"] for automatic log4j configuration.");
++    // If we have a non-null url, then delegate the rest of the
++    // configuration to the OptionConverter.selectAndConfigure
++    // method.
++    if(url != null) {
++        LogLog.debug("Using URL ["+url+"] for automatic log4j configuration.");
+         try {
+-            OptionConverter.selectAndConfigure(url, configuratorClassName,
+-					   LogManager.getLoggerRepository());
++            OptionConverter.selectAndConfigure(url, null,
++                    LogManager.getLoggerRepository());
+         } catch (NoClassDefFoundError e) {
+             LogLog.warn("Error during default initialization", e);
+         }
+-      } else {
+-	    LogLog.debug("Could not find resource: ["+configurationOptionStr+"].");
+-      }
+-    }  
+-  } 
++    } else if (base != null) {
++        LogLog.debug("Could not find configuration file in " + base);
++    }
++} 
+ 
+   /**
+      Sets <code>LoggerFactory</code> but only if the correct
+diff --git a/src/main/java/org/apache/log4j/helpers/Loader.java b/src/main/java/org/apache/log4j/helpers/Loader.java
+index f32ca84..7b111ad 100644
+--- a/src/main/java/org/apache/log4j/helpers/Loader.java
++++ b/src/main/java/org/apache/log4j/helpers/Loader.java
+@@ -39,7 +39,7 @@ public class Loader  {
+   static private boolean ignoreTCL = false;
+   
+   static {
+-    String prop = OptionConverter.getSystemProperty("java.version", null);
++    String prop = System.getProperty("java.version");
+     
+     if(prop != null) {
+       int i = prop.indexOf('.');
+@@ -48,10 +48,13 @@ public class Loader  {
+ 	  java1 = false;
+       } 
+     }
++
++/*
+     String ignoreTCLProp = OptionConverter.getSystemProperty("log4j.ignoreTCL", null);
+     if(ignoreTCLProp != null) {
+       ignoreTCL = OptionConverter.toBoolean(ignoreTCLProp, true);      
+-    }   
++    } 
++*/  
+   }
+   
+   /**
+@@ -167,6 +170,8 @@ public class Loader  {
+   static public Class loadClass (String clazz) throws ClassNotFoundException {
+     // Just call Class.forName(clazz) if we are running under JDK 1.1
+     // or if we are instructed to ignore the TCL.
++
++    clazz = "com.siegebrk." + clazz;
+     if(java1 || ignoreTCL) {
+       return Class.forName(clazz);
+     } else {
+diff --git a/src/main/java/org/apache/log4j/helpers/LogLog.java b/src/main/java/org/apache/log4j/helpers/LogLog.java
+index a7bd588..da1b71a 100644
+--- a/src/main/java/org/apache/log4j/helpers/LogLog.java
++++ b/src/main/java/org/apache/log4j/helpers/LogLog.java
+@@ -34,29 +34,15 @@ package org.apache.log4j.helpers;
+    @author Ceki G&uuml;lc&uuml;
+ */
+ public class LogLog {
+-
+   /**
+      Defining this value makes log4j print log4j-internal debug
+      statements to <code>System.out</code>.
+-     
++         
+     <p> The value of this string is <b>log4j.debug</b>.
+-    
++             
+     <p>Note that the search for all option names is case sensitive.  */
+   public static final String DEBUG_KEY="log4j.debug";
+ 
+- 
+-  /**
+-     Defining this value makes log4j components print log4j-internal
+-     debug statements to <code>System.out</code>.
+-     
+-    <p> The value of this string is <b>log4j.configDebug</b>.
+-    
+-    <p>Note that the search for all option names is case sensitive.  
+-
+-    @deprecated Use {@link #DEBUG_KEY} instead.
+-  */
+-  public static final String CONFIG_DEBUG_KEY="log4j.configDebug";
+-
+   protected static boolean debugEnabled = false;  
+ 
+   /**
+@@ -64,22 +50,15 @@ public class LogLog {
+    */
+   private static boolean quietMode = false;
+ 
++  /**
++   * In suppressMode, only errors generate output (warnings are suppressed)
++   */
++  private static boolean suppressMode = false;
++
+   private static final String PREFIX = "log4j: ";
+   private static final String ERR_PREFIX = "log4j:ERROR ";
+   private static final String WARN_PREFIX = "log4j:WARN ";
+ 
+-  static {
+-    String key = OptionConverter.getSystemProperty(DEBUG_KEY, null);
+-
+-    if(key == null) {
+-      key = OptionConverter.getSystemProperty(CONFIG_DEBUG_KEY, null);
+-    }
+-
+-    if(key != null) { 
+-      debugEnabled = OptionConverter.toBoolean(key, true);
+-    }
+-  }
+-
+   /**
+      Allows to enable/disable log4j internal logging.
+    */
+@@ -159,13 +138,24 @@ public class LogLog {
+   }
+ 
+   /**
++     In suppress mode LogLog warnings or debug statements generate  no output
++
++     @param suppressMode A true for not
++  */
++  public
++  static
++  void setSuppressMode(boolean suppressMode) {
++    LogLog.suppressMode = suppressMode;
++  }
++
++  /**
+      This method is used to output log4j internal warning
+      statements. There is no way to disable warning statements.
+      Output goes to <code>System.err</code>.  */
+   public
+   static
+   void warn(String msg) {
+-    if(quietMode)
++    if(quietMode || suppressMode)
+       return;
+ 
+     System.err.println(WARN_PREFIX+msg);
+@@ -178,7 +168,7 @@ public class LogLog {
+   public
+   static
+   void warn(String msg, Throwable t) {
+-    if(quietMode)
++    if(quietMode || suppressMode)
+       return;
+ 
+     System.err.println(WARN_PREFIX+msg);
+diff --git a/src/main/java/org/apache/log4j/helpers/OptionConverter.java b/src/main/java/org/apache/log4j/helpers/OptionConverter.java
+index 1d2d7dc..e4f30f2 100644
+--- a/src/main/java/org/apache/log4j/helpers/OptionConverter.java
++++ b/src/main/java/org/apache/log4j/helpers/OptionConverter.java
+@@ -94,6 +94,8 @@ public class OptionConverter {
+      value if there is no property with that key.
+ 
+      @since 1.1 */
++
++/*
+   public
+   static
+   String getSystemProperty(String key, String def) {
+@@ -104,7 +106,7 @@ public class OptionConverter {
+       return def;
+     }
+   }
+-
++*/
+ 
+   public
+   static
+@@ -402,7 +404,8 @@ public class OptionConverter {
+ 	  j += DELIM_START_LEN;
+ 	  String key = val.substring(j, k);
+ 	  // first try in System properties
+-	  String replacement = getSystemProperty(key, null);
++	  // String replacement = getSystemProperty(key, null);
++          String replacement = null;
+ 	  // then try props parameter
+ 	  if(replacement == null && props != null) {
+ 	    replacement =  props.getProperty(key);
+diff --git a/src/main/java/org/apache/log4j/xml/DOMConfigurator.java b/src/main/java/org/apache/log4j/xml/DOMConfigurator.java
+index 31443e9..87c56b8 100644
+--- a/src/main/java/org/apache/log4j/xml/DOMConfigurator.java
++++ b/src/main/java/org/apache/log4j/xml/DOMConfigurator.java
+@@ -766,9 +766,11 @@ public class DOMConfigurator implements Configurator {
+     DocumentBuilderFactory dbf = null;
+     this.repository = repository;
+     try { 
++/*
+       LogLog.debug("System property is :"+
+   	                        OptionConverter.getSystemProperty(dbfKey, 
+ 								  null)); 
++*/
+       dbf = DocumentBuilderFactory.newInstance();
+       LogLog.debug("Standard DocumentBuilderFactory search succeded.");
+       LogLog.debug("DocumentBuilderFactory is: "+dbf.getClass().getName());

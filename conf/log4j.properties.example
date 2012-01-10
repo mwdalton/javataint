@@ -1,0 +1,13 @@
+#Default:
+#Keep a 100KB log file, rotating when the file size limit has been reached.
+#A maximum of 5 logfiles are kept.
+log4j.rootLogger=warning, A1
+
+log4j.appender.A1=org.apache.log4j.RollingFileAppender
+log4j.appender.A1.File=@install@/siegebrk.log
+
+log4j.appender.A1.MaxFileSize=100KB
+log4j.appender.A1.MaxBackupIndex=5
+
+log4j.appender.A1.layout=org.apache.log4j.PatternLayout
+log4j.appender.A1.layout.ConversionPattern=%p %t %c - %m%n

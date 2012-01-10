@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE sb-config SYSTEM "file://@install@/sb.dtd">
+
+<sb-config>
+  <!-- Required: specify the hostname of the license server. -->
+  <license-server host="1.1.1.1" port="8080"/>
+
+  <policy type="sql" enabled="true" log-attack="true" log-vuln="true"/>
+  <policy type="exec" enabled="true" log-attack="true" log-vuln="true"/>
+  <policy type="file" enabled="true" log-attack="true" log-vuln="true"/>
+  <policy type="xss" enabled="true" log-attack="true" log-vuln="true"/>
+
+  <!-- This designates the escapeHTML method in com.example.Foo as a 
+       cross-site scripting (XSS) filter function -->
+  <filter type="xss" class="com.example.Foo" method="escapeHTML"/>
+
+  <!-- This designates a whitelist for method execUnsafeQueries() -->
+  <whitelist type="sql" class="com.example.Baz" method="unsafeQuery"/>
+  <whitelist type="file" class="com.example.Baz" method="unsafeFile"/>
+  <whitelist type="exec" class="com.example.Baz" method="unsafeExec"/>
+  <whitelist type="file" class="com.example.UnsafeFileClass"/>
+</sb-config>

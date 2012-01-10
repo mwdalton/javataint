@@ -1,0 +1,86 @@
+<project name="java-version-preprocessor">
+
+  <macrodef name="build-jre-filter">
+    <attribute name="version"/>
+    <sequential>
+      <condition property="@{version}ifjava6.token" value="">
+        <equals arg1="@{version}" arg2="1.6"/>
+      </condition>
+
+      <condition property="@{version}fijava6.token" value="">
+        <equals arg1="@{version}" arg2="1.6"/>
+      </condition>
+
+      <condition property="@{version}ifjava5.token" value="">
+        <equals arg1="@{version}" arg2="1.5"/>
+      </condition>
+
+      <condition property="@{version}fijava5.token" value="">
+        <equals arg1="@{version}" arg2="1.5"/>
+      </condition>
+
+      <condition property="@{version}ifjava4.token" value="">
+        <equals arg1="@{version}" arg2="1.4"/>
+      </condition>
+
+      <condition property="@{version}fijava4.token" value="">
+        <equals arg1="@{version}" arg2="1.4"/>
+      </condition>
+
+      <condition property="@{version}ifjava5+.token" value="">
+        <or>
+          <equals arg1="@{version}" arg2="1.6"/>
+          <equals arg1="@{version}" arg2="1.5"/>
+        </or>
+      </condition>
+
+      <condition property="@{version}fijava5+.token" value="">
+        <or>
+          <equals arg1="@{version}" arg2="1.6"/>
+          <equals arg1="@{version}" arg2="1.5"/>
+        </or>
+      </condition>
+
+      <condition property="@{version}StringBuilder" value="StringBuilder">
+        <or>
+          <equals arg1="@{version}" arg2="1.6"/>
+          <equals arg1="@{version}" arg2="1.5"/>
+        </or>
+      </condition>
+
+      <!-- Properties are immutable once defined, so if we didn't find the right
+           java version, we  initialize tokens to Java begin/end comment.  -->
+      <property name="@{version}ifjava6.token" value="/*"/>
+      <property name="@{version}fijava6.token" value="*/"/>
+
+      <property name="@{version}ifjava5+.token" value="/*"/>
+      <property name="@{version}fijava5+.token" value="*/"/>
+
+      <property name="@{version}ifjava5.token" value="/*"/>
+      <property name="@{version}fijava5.token" value="*/"/>
+
+      <property name="@{version}ifjava4.token" value="/*"/>
+      <property name="@{version}fijava4.token" value="*/"/>
+
+      <property name="@{version}StringBuilder" value="StringBuffer"/>
+      <filterset id="str-@{version}">
+        <filter token="StringBuilder" value="${@{version}StringBuilder}"/>
+      </filterset>
+
+      <filterset begintoken="//[" endtoken="]" id="jre-@{version}">
+        <filter token="ifJava6"  value="${@{version}ifjava6.token}"/>
+        <filter token="fiJava6"  value="${@{version}fijava6.token}"/>
+
+        <filter token="ifJava5+" value="${@{version}ifjava5+.token}"/>
+        <filter token="fiJava5+" value="${@{version}fijava5+.token}"/>
+
+        <filter token="ifJava5"  value="${@{version}ifjava5.token}"/>
+        <filter token="fiJava5"  value="${@{version}fijava5.token}"/>
+
+        <filter token="ifJava4"  value="${@{version}ifjava4.token}"/>
+        <filter token="fiJava4"  value="${@{version}fijava4.token}"/>
+      </filterset>
+
+    </sequential>
+  </macrodef>
+</project>

@@ -1,0 +1,296 @@
+<project name="java-siegebreaker-test" default="run-tests">
+
+  <property name="test.string" value="**/StringTest.java **/TaintTest.java"/>
+  <property name="test.sql" value="**/HypersonicSqlTest.java **/MySqlTest.java **/PostgreSqlTest.java **/Db2SqlTest.java **/DerbySqlTest.java **/OracleSqlTest.java"/>
+  <property name="test.servlet" value="**/ServletTest.java"/>
+  <property name="test.jrockit" value="**/StringMakerTest.java"/>
+  <property name="test.xss" value="**/HtmlValidatorTest.java"/>
+
+  <target name="prepare-src">
+    <macrodef name="do-prepare-src">
+      <attribute name="version"/>
+      <sequential>
+        <mkdir dir="${test.build.src}/@{version}"/>
+        <copy todir="${test.build.src}/@{version}">
+          <filterset refid="sb-defines"/>
+          <filterset refid="jre-@{version}"/>
+          <filterset refid="str-@{version}"/>
+          <fileset dir="${test.src}" excludes="**/*Java1.?.java"/>
+        </copy>
+        <copy todir="${test.build.src}/@{version}">
+          <filterset refid="sb-defines"/>
+          <filterset refid="jre-@{version}"/>
+          <filterset refid="str-@{version}"/>
+          <fileset dir="${test.src}" includes="**/*Java@{version}.java"/>
+          <globmapper from="*Java@{version}.java" to="*.java"/>
+        </copy>
+      </sequential>
+    </macrodef>
+
+    <do-prepare-src version="1.4"/>
+    <do-prepare-src version="1.5"/>
+    <do-prepare-src version="1.6"/>
+  </target>
+
+  <target name="dist-normal-bootlib">
+    <macrodef name="do-normal-bootlib">
+      <attribute name="version"/>
+      <attribute name="java-exec"/>
+      <sequential>
+        <mkdir dir="${test.lib}"/>
+        <java jar="${dist.files}/sb-bootstrap.jar" fork="true"
+              jvm="@{java-exec}" failonerror="true">
+          <arg value="-d"/>
+          <arg value="-j"/>
+          <arg path="${test.lib}/sb-bootlib@{version}.jar"/>
+          <arg value="-r14"/>
+          <arg path="${dist.files}/sb-rt1.4.jar"/>
+          <arg value="-r15"/>
+          <arg path="${dist.files}/sb-rt1.5.jar"/>
+        </java>
+      </sequential>
+    </macrodef>
+
+    <do-normal-bootlib version="1.4" java-exec="${java14.home}/bin/java"/>
+    <do-normal-bootlib version="1.5" java-exec="${java15.home}/bin/java"/>
+    <do-normal-bootlib version="1.6" java-exec="${java16.home}/bin/java"/>
+    <do-normal-bootlib version="1.4-jrockit"
+                       java-exec="${jrockit14.home}/bin/java"/>
+    <do-normal-bootlib version="1.5-jrockit"
+                       java-exec="${jrockit15.home}/bin/java"/>
+    <do-normal-bootlib version="1.6-jrockit"
+                       java-exec="${jrockit16.home}/bin/java"/>
+  </target>
+
+  <target name="compile-remap" depends="prepare-src, dist-normal-bootlib">
+    <mkdir dir="${test.build}/remap"/>
+    <javac srcdir="${test.build.src}/1.4/remap"
+           destdir="${test.build}/remap" source="1.4" target="1.4" fork="true"
+           classpath="${asm.classpath}:${log4j.path}:${build.common}"  
+           debug="on"/>
+  </target> 
+
+  <target name="run-remap" depends="compile-remap">
+    <macrodef name="do-remap">
+      <attribute name="version"/>
+      <attribute name="java-exec"/>
+      <sequential>
+        <mkdir dir="${test.build}/@{version}/mockobj/string/java/lang"/>
+        <java classname="com.siegebrk.RemappingStringClassAdapter" fork="true"
+              jvm="@{java-exec}" failonerror="true"
+              classpath="${test.build}/remap:${asm.classpath}:${log4j.path}:${build.common}">
+          <arg path="${test.build}/@{version}/mockobj/string/java/lang"/>
+        </java>
+
+        <mkdir dir="${test.build}/@{version}/mockobj/log/com/siegebrk"/>
+        <mkdir dir="${test.build}/@{version}/mockobj/xss/com/siegebrk"/>
+        <java classname="com.siegebrk.RemappingMiscClassAdapter" fork="true"
+              jvm="@{java-exec}" failonerror="true"
+              classpath="${test.build}/remap:${asm.classpath}:${log4j.path}:${build.common}">
+          <jvmarg value="-Xbootclasspath/p:${test.lib}/sb-bootlib@{version}.jar"/>
+          <jvmarg value="-Dsiegebreaker.loglog.level=error"/>
+          <arg path="${test.build}/@{version}/mockobj/log/com/siegebrk"/>
+          <arg path="${test.build}/@{version}/mockobj/xss/com/siegebrk"/>
+        </java>
+      </sequential>
+    </macrodef>
+
+    <do-remap version="1.4" java-exec="${java14.home}/bin/java"/>
+    <do-remap version="1.5" java-exec="${java15.home}/bin/java"/>
+    <do-remap version="1.6" java-exec="${java16.home}/bin/java"/>
+  </target>
+
+  <target name="compile-common" depends="run-remap">
+    <macrodef name="do-compile-common">
+      <attribute name="version"/>
+      <attribute name="javac-exec"/>
+      <sequential>
+        <mkdir dir="${test.build}/@{version}/common"/>
+        <javac srcdir="${test.build.src}/@{version}/common" 
+               destdir="${test.build}/@{version}/common"
+               source="@{version}" target="@{version}"
+               fork="true" executable="@{javac-exec}" debug="on">
+          <compilerarg value="-Xbootclasspath/p:${test.lib}/sb-bootlib@{version}.jar"/>
+        </javac>
+      </sequential>
+    </macrodef>
+    <do-compile-common version="1.4" javac-exec="${java14.home}/bin/javac"/>
+    <do-compile-common version="1.5" javac-exec="${java15.home}/bin/javac"/>
+    <do-compile-common version="1.6" javac-exec="${java16.home}/bin/javac"/>
+  </target>
+
+  <target name="compile-mockobj" depends="prepare-src, dist-normal-bootlib, compile-common">
+    <macrodef name="do-compile-mockobj">
+      <attribute name="version"/>
+      <attribute name="javac-exec"/>
+      <attribute name="mockdir"/>
+      <sequential>
+        <mkdir dir="${test.build}/@{version}/mockobj/@{mockdir}"/>
+        <javac srcdir="${test.build.src}/@{version}/mockobj/@{mockdir}" 
+               destdir="${test.build}/@{version}/mockobj/@{mockdir}"
+               source="@{version}" target="@{version}" fork="true"
+               classpath="${test.build}/@{version}/common:${test.build}/@{version}/mockobj/@{mockdir}"
+               executable="@{javac-exec}" debug="on">
+          <compilerarg value="-Xbootclasspath/p:${test.lib}/sb-bootlib@{version}.jar"/>
+        </javac>
+      </sequential>
+    </macrodef>
+
+    <macrodef name="do-compile-mockobj-dirs">
+      <attribute name="version"/>
+      <attribute name="javac-exec"/>
+      <sequential>
+        <do-compile-mockobj mockdir="servlet"
+                            version="@{version}" javac-exec="@{javac-exec}"/>
+        <do-compile-mockobj mockdir="sql"
+                            version="@{version}" javac-exec="@{javac-exec}"/>
+        <do-compile-mockobj mockdir="string"
+                            version="@{version}" javac-exec="@{javac-exec}"/>
+        <do-compile-mockobj mockdir="log"
+                            version="@{version}" javac-exec="@{javac-exec}"/>
+        <do-compile-mockobj mockdir="xss"
+                            version="@{version}" javac-exec="@{javac-exec}"/>
+      </sequential>
+    </macrodef>
+
+    <do-compile-mockobj-dirs version="1.4" 
+                             javac-exec="${java14.home}/bin/javac"/>
+    <do-compile-mockobj-dirs version="1.5" 
+                             javac-exec="${java15.home}/bin/javac"/>
+    <do-compile-mockobj-dirs version="1.6" 
+                             javac-exec="${java16.home}/bin/javac"/>
+  </target>
+
+  <target name="dist-sql-mockobj-bootlib" depends="compile-mockobj">
+    <macrodef name="do-sql-mockobj-bootlib">
+      <attribute name="version"/>
+      <attribute name="java-exec"/>
+      <sequential>
+        <mkdir dir="${test.lib}"/>
+        <java jar="${dist.files}/sb-bootstrap.jar" fork="true"
+              jvm="@{java-exec}" failonerror="true">
+          <arg value="-d"/>
+          <arg value="-j"/>
+          <arg path="${test.lib}/sb-sql-mockobj-core-bootlib@{version}.jar"/>
+          <arg value="-r14"/>
+          <arg path="${dist.files}/sb-rt1.4.jar"/>
+          <arg value="-r15"/>
+          <arg path="${dist.files}/sb-rt1.5.jar"/>
+          <jvmarg value="-Xbootclasspath/p:${test.build}/@{version}/lib/mockobj/sql"/>
+        </java>
+
+        <jar destfile="${test.lib}/sb-sql-mockobj-bootlib@{version}.jar">
+          <fileset dir="${test.build}/@{version}/mockobj/sql"
+                   includes="java/sql/** javax/sql/**"
+                   excludes="java/sql/Connection.class"/>
+          <zipfileset src="${test.lib}/sb-sql-mockobj-core-bootlib@{version}.jar"/>
+        </jar>
+
+        <delete dir="${test.lib}" includes="sb-sql-mockobj-core-bootlib*.jar"/>
+      </sequential>
+    </macrodef>
+
+    <do-sql-mockobj-bootlib version="1.4" java-exec="${java14.home}/bin/java"/>
+    <do-sql-mockobj-bootlib version="1.5" java-exec="${java15.home}/bin/java"/>
+    <do-sql-mockobj-bootlib version="1.6" java-exec="${java16.home}/bin/java"/>
+  </target>
+
+  <target name="compile-normal-tests" depends="dist-normal-bootlib, prepare-src, compile-common, compile-mockobj">
+    <macrodef name="do-compile-normal-tests">
+      <attribute name="version"/>
+      <attribute name="javac-exec"/>
+      <sequential>
+        <mkdir dir="${test.build}/@{version}/tests"/>
+        <javac srcdir="${test.build.src}/@{version}/tests" 
+               destdir="${test.build}/@{version}/tests" fork="true"
+               excludes="${test.string} ${test.servlet} ${test.sql} ${test.xss} ${test.jrockit}" 
+               debug="on" classpath="${test.build}/@{version}/common"
+               executable="@{javac-exec}" source="@{version}" 
+               target="@{version}">
+         <compilerarg value="-Xbootclasspath/p:${test.build}/@{version}/mockobj/log:${test.lib}/sb-bootlib@{version}.jar"/>
+       </javac>
+     </sequential>
+   </macrodef>
+
+    <do-compile-normal-tests version="1.4" javac-exec="${java14.home}/bin/javac"/>
+    <do-compile-normal-tests version="1.5" javac-exec="${java15.home}/bin/javac"/>
+    <do-compile-normal-tests version="1.6" javac-exec="${java16.home}/bin/javac"/>
+  </target>
+
+  <target name="compile-mockobj-tests" depends="dist-normal-bootlib, prepare-src, compile-common, dist-sql-mockobj-bootlib">
+    <macrodef name="do-compile-mockobj-tests">
+      <attribute name="version"/>
+      <attribute name="javac-exec"/>
+      <attribute name="tests"/>
+      <attribute name="classpath"/>
+      <sequential>
+        <mkdir dir="${test.build}/@{version}/tests"/>
+        <javac srcdir="${test.build.src}/@{version}/tests" 
+               destdir="${test.build}/@{version}/tests" fork="true"
+               includes="@{tests}" debug="on" 
+               classpath="${test.build}/@{version}/common:"
+               executable="@{javac-exec}" source="@{version}" 
+               target="@{version}">
+         <compilerarg value="-Xbootclasspath/p:${test.build}/@{version}/mockobj/log:@{classpath}:${test.lib}/sb-bootlib@{version}.jar"/>
+       </javac>
+     </sequential>
+   </macrodef>
+
+   <macrodef name="do-compile-mockobj-all">
+     <attribute name="version"/>
+     <attribute name="javac-exec"/>
+
+     <sequential>
+       <do-compile-mockobj-tests tests="${test.string}" 
+                          classpath="${test.build}/@{version}/mockobj/string"
+                          version="@{version}" javac-exec="@{javac-exec}"/>
+       <do-compile-mockobj-tests tests="${test.servlet}" 
+                          classpath="${test.build}/@{version}/mockobj/servlet"
+                          version="@{version}" javac-exec="@{javac-exec}"/>
+       <do-compile-mockobj-tests tests="${test.sql}" 
+                          classpath="${test.lib}/sb-sql-mockobj-bootlib@{version}.jar:${test.build}/@{version}/mockobj/sql"
+                          version="@{version}" javac-exec="@{javac-exec}"/> 
+       <do-compile-mockobj-tests tests="${test.xss}" 
+                          classpath="${test.build}/@{version}/mockobj/servlet:${test.build}/@{version}/mockobj/xss"
+                          version="@{version}" javac-exec="@{javac-exec}"/>
+     </sequential>
+   </macrodef>
+
+    <do-compile-mockobj-all version="1.4" javac-exec="${java14.home}/bin/javac"/>
+    <do-compile-mockobj-all version="1.5" javac-exec="${java15.home}/bin/javac"/>
+    <do-compile-mockobj-all version="1.6" javac-exec="${java16.home}/bin/javac"/>
+  </target>
+
+  <target name="compile-jrockit-tests" depends="dist-normal-bootlib, prepare-src, compile-common">
+    <macrodef name="do-compile-jrockit-tests">
+      <attribute name="version"/>
+      <attribute name="javac-exec"/>
+      <sequential>
+        <mkdir dir="${test.build}/@{version}/tests"/>
+        <javac srcdir="${test.build.src}/@{version}/tests" 
+               destdir="${test.build}/@{version}/tests" fork="true"
+               includes="${test.jrockit}" debug="on" 
+               classpath="${test.build}/@{version}/common"
+               executable="@{javac-exec}" source="@{version}" 
+               target="@{version}">
+         <compilerarg value="-Xbootclasspath/p:${test.build}/@{version}/mockobj/log:${test.lib}/sb-bootlib@{version}-jrockit.jar"/>
+       </javac>
+     </sequential>
+   </macrodef>
+
+    <do-compile-jrockit-tests version="1.4" 
+                              javac-exec="${jrockit14.home}/bin/javac"/>
+    <do-compile-jrockit-tests version="1.5" 
+                              javac-exec="${jrockit15.home}/bin/javac"/>
+    <do-compile-jrockit-tests version="1.6"  
+                              javac-exec="${jrockit16.home}/bin/javac"/>
+  </target>
+
+  <target name="run-tests" depends="compile-normal-tests, compile-mockobj-tests,                                    compile-jrockit-tests"/>
+
+  <target name="clean">
+    <delete dir="${test.build}"/>
+    <delete dir="${test.lib}"/>
+  </target>
+
+</project>

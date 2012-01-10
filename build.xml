@@ -1,0 +1,281 @@
+<project name="java-siegebreaker" default="release-unix">
+ 
+  <property name="conf" value="${basedir}/conf"/>
+  <property name="build" value="${basedir}/build"/>
+  <property name="dist" value="${basedir}/dist"/>
+  <property name="lib"  value="${basedir}/lib"/>
+  <property name="src"  value="${basedir}/src"/>
+
+  <property name="test" value="${basedir}/test"/>
+  <property name="test.lib" value="${test}/lib"/>
+  <property name="test.build" value="${test}/build"/>
+  <property name="test.build.src" value="${test}/build/src"/>
+  <property name="test.src" value="${test}/src"/>
+
+  <property name="build.bootstrap" value="${build}/bootstrap"/>
+  <property name="build.common" value="${build}/common"/>
+  <property name="build.lib" value="${build}/lib"/>
+  <property name="build.rt" value="${build}/rt"/>
+  <property name="build.src" value="${build}/src"/>
+  <property name="build.src.bootstrap" value="${build.src}/bootstrap"/>
+  <property name="build.src.rt" value="${build.src}/rt"/>
+  <property name="build.src.common" value="${build.src}/common"/>
+  <property name="build.src.install" value="${build.src}/install"/>
+  <property name="build.src.install.unix" value="${build.src.install}/unix"/>
+
+  <property name="dist.files" value="${dist}/files"/>
+  <property name="dist.release" value="${dist}/release"/>
+
+  <property file="build.config"/>
+
+  <property name="sb.version" value="0.9"/>
+  <property name="sb.internal.prefix" value="$com_siegebrk_$"/>
+  <filterset id="sb-defines">
+    <filter token="version" value="${sb.version}"/>
+    <filter token="internal" value="${sb.internal.prefix}"/>
+  </filterset>
+
+  <import file="version.xml"/>
+  <build-jre-filter version="1.4"/>
+  <build-jre-filter version="1.5"/>
+  <build-jre-filter version="1.6"/>
+
+  <taskdef name="jarjar" classname="com.tonicsystems.jarjar.JarJarTask"
+           classpath="${jarjar.path}"/>
+
+  <target name="check">
+    <fail message="Build config file not present" unless="asm.classpath"/>
+  </target>
+
+  <target name="prepare-nort-src" depends="check">
+    <mkdir dir="${build.src}"/>
+
+    <copy todir="${build.src}">
+      <fileset dir="${src}" excludes="rt/**"/>
+      <filterset refid="sb-defines"/>
+      <filterset> 
+        <filter token="builder" value="StringBuilder"/>
+      </filterset>
+    </copy>
+
+    <copy file="${src}/bootstrap/com/siegebrk/StringBuilderAdapter.java"
+          tofile="${build.src.bootstrap}/com/siegebrk/StringBufferAdapter.java">
+      <filterset refid="sb-defines"/>
+      <filterset>
+        <filter token="builder" value="StringBuffer"/>
+      </filterset>
+    </copy>
+  </target>
+
+  <target name="prepare-rt-src" depends="check">
+    <macrodef name="do-prepare-rt">
+      <attribute name="version"/>
+      <sequential>
+        <mkdir dir="${build.src.rt}/@{version}"/>
+        <copy todir="${build.src.rt}/@{version}">
+          <fileset dir="${src}/rt"/>
+          <filterset refid="sb-defines"/>
+          <filterset refid="jre-@{version}"/>
+          <filterset refid="str-@{version}"/>
+        </copy>
+      </sequential>
+    </macrodef>
+
+    <do-prepare-rt version="1.4"/>
+    <do-prepare-rt version="1.5"/>
+  </target>
+
+  <target name="compile-common" depends="prepare-nort-src, prepare-rt-src">
+   <mkdir dir="${build.common}"/>
+    <javac srcdir="${build.src.common}" destdir="${build.common}" 
+           debug="on" source="1.4" target="1.4" 
+           classpath="${asm.classpath}:${log4j.path}"/>
+  </target>
+
+  <target name="compile-bootstrap" depends="compile-common">
+    <mkdir dir="${build.bootstrap}"/>
+    <javac srcdir="${build.src.bootstrap}" destdir="${build.bootstrap}" 
+           debug="on" source="1.4" target="1.4" 
+           classpath="${asm.classpath}:${log4j.path}:${build.common}"/>
+  </target>
+
+  <target name="dist-conf">
+    <mkdir dir="${dist.files}"/>
+    <copy todir="${dist.files}">
+      <fileset dir="${conf}"/>
+    </copy>
+  </target>
+
+  <target name="dist-bootstrap" depends="compile-bootstrap">
+    <mkdir dir="${dist.files}"/>
+    <jarjar destfile="${dist.files}/sb-bootstrap.jar">
+      <fileset dir="${build.bootstrap}" excludes="**/JarMerger.class"/>
+      <fileset dir="${build.common}"/>
+      <rule pattern="org.objectweb.asm.**" 
+             result="com.siegebrk.org.objectweb.asm.@1"/>
+
+      <zipfileset src="${asm-core.path}"/>
+      <zipfileset src="${asm-commons.path}"/>
+      <zipfileset src="${asm-util.path}"/>
+      <zipfileset src="${asm-tree.path}"/>
+      <zipfileset src="${asm-analysis.path}"/>
+
+      <manifest>
+        <attribute name="Main-Class" value="com.siegebrk.Bootstrap"/>
+	<attribute name="Implementation-Title" value="SiegeBreaker Bootstrap"/>
+	<attribute name="Implementation-Version" value="${sb.version}"/> 
+	<attribute name="Implementation-Vendor" value="SiegeBreaker"/>
+      </manifest>
+    </jarjar>
+  </target>
+
+  <target name="dist-jarmerger" depends="compile-bootstrap">
+    <mkdir dir="${dist.files}"/>
+    <jar destfile="${dist.files}/sb-jarmerger.jar"
+         basedir="${build.bootstrap}"
+         includes="**/JarMerger.class">
+      <manifest>
+        <attribute name="Main-Class" value="com.siegebrk.JarMerger"/>
+        <attribute name="Implementation-Title" value="SiegeBreaker JarMerger"/>
+        <attribute name="Implementation-Version" value="${sb.version}"/> 
+        <attribute name="Implementation-Vendor" value="SiegeBreaker"/>
+      </manifest>
+    </jar>
+  </target>
+
+  <target name="run-bootstrap" depends="dist-bootstrap, dist-jarmerger">
+    <mkdir dir="${build.lib}"/>
+
+    <macrodef name="do-bootstrap">
+      <attribute name="java-exec"/>
+      <attribute name="version"/>
+      <sequential>
+        <java jar="${dist.files}/sb-bootstrap.jar" fork="true"
+              jvm="@{java-exec}">
+          <arg value="-d"/>
+          <arg value="-j"/>
+          <arg path="${build.lib}/sb-bootlib@{version}.jar"/>
+        </java>
+      </sequential>
+    </macrodef>
+
+    <do-bootstrap version="1.4" java-exec="${java14.home}/bin/java"/>
+    <do-bootstrap version="1.5" java-exec="${java.home}/bin/java"/>
+  </target>
+
+  <target name="compile-rtlib" depends="run-bootstrap">
+    <macrodef name="do-compile-rtlib">
+      <attribute name="javac-exec"/>
+      <attribute name="version"/>
+      <sequential>
+        <mkdir dir="${build.rt}/@{version}"/>
+        <javac srcdir="${build.src.rt}/@{version}" 
+               destdir="${build.rt}/@{version}" 
+               debug="on" source="@{version}" target="@{version}" 
+               executable="@{javac-exec}"
+               classpath="${asm.classpath.notree}:${log4j.path}:${build.common}">
+          <compilerarg 
+              value="-Xbootclasspath/p:${build.lib}/sb-bootlib@{version}.jar"/>
+        </javac>
+      </sequential>
+    </macrodef>
+
+    <do-compile-rtlib version="1.4" javac-exec="${java14.home}/bin/javac"/>
+    <do-compile-rtlib version="1.5" javac-exec="${java.home}/bin/javac"/>
+  </target>
+
+  <target name="dist-rtlib" depends="compile-rtlib">
+    <mkdir dir="${dist.files}"/>
+
+    <macrodef name="do-dist-rtlib">
+      <attribute name="version"/>
+      <sequential>
+        <jarjar destfile="${dist.files}/sb-rt@{version}.jar">
+          <fileset dir="${build.rt}/@{version}"/>
+          <fileset dir="${build.common}"/>
+          <rule pattern="org.objectweb.asm.**" 
+                result="com.siegebrk.org.objectweb.asm.@1"/>
+          <rule pattern="org.apache.log4j.**" 
+                result="com.siegebrk.org.apache.log4j.@1"/>
+
+          <zipfileset src="${asm-core.path}"/>
+          <zipfileset src="${asm-commons.path}"/>
+          <zipfileset src="${asm-util.path}"/>
+          <zipfileset src="${log4j.path}"/>
+
+          <manifest>
+  	    <attribute name="Implementation-Title" 
+                       value="SiegeBreaker Runtime"/>
+	    <attribute name="Implementation-Version" value="${sb.version}"/> 
+	    <attribute name="Implementation-Vendor" value="SiegeBreaker"/>
+            <attribute name="Specification-Version" value="@{version}"/>
+          </manifest>
+        </jarjar>
+      </sequential>
+    </macrodef>
+
+    <do-dist-rtlib version="1.4"/>
+    <do-dist-rtlib version="1.5"/>
+  </target>
+
+  <target name="dist-install" depends="prepare-nort-src">
+   <copy todir="${dist.files}">
+     <fileset dir="${build.src.install.unix}"/>
+     <filterset refid="sb-defines"/>
+   </copy>
+  </target>
+
+  <target name="release-unix" depends="dist-rtlib, dist-install, dist-conf">
+    <mkdir dir="${dist.release}"/>
+    <tar destfile="${dist.release}/siegebreaker-${sb.version}.tar.gz"
+         compression="gzip">
+      <tarfileset dir="${dist.files}" prefix="siegebreaker-${sb.version}"
+                  excludes="*.sh *.csh" filemode="600" username="root" 
+                  group="root" uid="0" gid="0"/>
+      <tarfileset dir="${dist.files}" prefix="siegebreaker-${sb.version}"
+                  includes="*.sh *.csh" filemode="700" username="root"
+                  group="root" uid="0" gid="0"/>
+    </tar>
+  </target>
+
+  <target name="install-siegebrk" depends="release-unix">
+    <macrodef name="do-install-siegebrk">
+      <attribute name="java-home"/>
+      <attribute name="version"/>
+      <sequential>
+        <mkdir dir="${install.path}/@{version}"/>
+        <exec executable="${dist.release}/siegebreaker-${sb.version}/install.sh"
+              failonerror="true">
+          <arg value="-b"/>
+          <arg path="@{java-home}"/>
+          <arg value="-i"/>
+          <arg path="${install.path}/@{version}"/>
+        </exec>
+      </sequential>
+    </macrodef>
+
+    <untar src="${dist.release}/siegebreaker-${sb.version}.tar.gz"
+           dest="${dist.release}" compression="gzip"/>
+    <chmod file="${dist.release}/siegebreaker-${sb.version}/install.sh"
+           perm="700"/>
+    <do-install-siegebrk java-home="${java14.home}" version="1.4"/>
+    <do-install-siegebrk java-home="${java15.home}" version="1.5"/>
+    <do-install-siegebrk java-home="${java16.home}" version="1.6"/>
+  </target>
+
+  <target name="test" depends="release-unix">
+    <ant antfile="${test}/build.xml" inheritRefs="true"/>
+  </target>
+
+  <target name="clean">
+    <delete dir="${build}"/>
+    <ant antfile="${test}/build.xml" target="clean" inheritRefs="true"/>
+  </target>
+
+  <target name="dist-clean">
+    <delete dir="${build}"/>
+    <delete dir="${dist}"/>
+    <ant antfile="${test}/build.xml" target="clean" inheritRefs="true"/>
+  </target>
+
+</project>

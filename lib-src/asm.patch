@@ -1,0 +1,353 @@
+diff --git a/build.properties b/build.properties
+index 6fe1f39..ca0a06c 100644
+--- a/build.properties
++++ b/build.properties
+@@ -35,6 +35,7 @@ product.version 3.1
+ # product.snapshot yes
+ 
+ plugin.version 3.1.0
++product.noshrink true
+ 
+ 
+ ###############################################################################
+diff --git a/build.xml b/build.xml
+index dc6529d..dc6c52a 100644
+--- a/build.xml
++++ b/build.xml
+@@ -156,11 +156,26 @@
+       <uptodate srcfile="${src}/org/objectweb/asm/ClassReader.java" 
+         targetfile="${out.build}/tmp/org/objectweb/asm/ClassReader.java"/>
+     </condition>
++
+     <copy todir="${out.build}/tmp">
+       <fileset dir="${src}">
+         <include name="**/*"/>
+       </fileset>
++      <filterset> 
++          <filter token="AdviceAdapter"    value="AdviceAdapter"/>
++          <filter token="SuperClass"       value="GeneratorAdapter"/>
++          <filter token="SuperConstructor" value="super(mv, access, name, desc)"/>
++      </filterset>
+     </copy>
++
++     <copy tofile="${out.build}/tmp/org/objectweb/asm/commons/SimpleAdviceAdapter.java"  
++           file="${src}/org/objectweb/asm/commons/AdviceAdapter.java">
++        <filterset>
++          <filter token="AdviceAdapter"    value="SimpleAdviceAdapter"/>
++          <filter token="SuperClass"       value="MethodAdapter"/>
++          <filter token="SuperConstructor" value="super(mv)"/>
++        </filterset>
++      </copy>
+   </target>
+ 
+   <target name="compile-config" unless="config.uptodate">
+diff --git a/src/org/objectweb/asm/commons/AdviceAdapter.java b/src/org/objectweb/asm/commons/AdviceAdapter.java
+index fd34bf4..94401b9 100644
+--- a/src/org/objectweb/asm/commons/AdviceAdapter.java
++++ b/src/org/objectweb/asm/commons/AdviceAdapter.java
+@@ -30,6 +30,7 @@
+ package org.objectweb.asm.commons;
+ 
+ import org.objectweb.asm.Label;
++import org.objectweb.asm.MethodAdapter;
+ import org.objectweb.asm.MethodVisitor;
+ import org.objectweb.asm.Opcodes;
+ import org.objectweb.asm.Type;
+@@ -57,16 +58,20 @@ import java.util.Map;
+  * @author Eugene Kuleshov
+  * @author Eric Bruneton
+  */
+-public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
++public abstract class @AdviceAdapter@ extends @SuperClass@ implements Opcodes
+ {
+     private static final Object THIS = new Object();
+     private static final Object OTHER = new Object();
+ 
+-    protected int methodAccess;
+-    protected String methodDesc;
++    protected final String className;
++    protected final int methodAccess;
++    protected final String methodName;
++    protected final String methodDesc;
+ 
+-    private boolean constructor;
+-    private boolean superInitialized;
++    protected final boolean constructor;
++    protected boolean superInitialized;
++
++    private boolean initialized;
+     private List stackFrame;
+     private Map branches;
+ 
+@@ -78,16 +83,18 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+      * @param name the method's name.
+      * @param desc the method's descriptor (see {@link Type Type}).
+      */
+-    protected AdviceAdapter(
++    protected @AdviceAdapter@(
+         final MethodVisitor mv,
++        final String owner,
+         final int access,
+         final String name,
+         final String desc)
+     {
+-        super(mv, access, name, desc);
++        @SuperConstructor@;
++        className = owner;
+         methodAccess = access;
++        methodName = name;
+         methodDesc = desc;
+-
+         constructor = "<init>".equals(name);
+     }
+ 
+@@ -97,15 +104,15 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+             stackFrame = new ArrayList();
+             branches = new HashMap();
+         } else {
+-            superInitialized = true;
+             onMethodEnter();
++            initialized = true;
+         }
+     }
+ 
+     public void visitLabel(final Label label) {
+         mv.visitLabel(label);
+ 
+-        if (constructor && branches != null) {
++        if (!initialized && branches != null) {
+             List frame = (List) branches.get(label);
+             if (frame != null) {
+                 stackFrame = frame;
+@@ -115,7 +122,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     }
+ 
+     public void visitInsn(final int opcode) {
+-        if (constructor) {
++        if (!initialized) {
+             int s;
+             switch (opcode) {
+                 case RETURN: // empty stack
+@@ -314,7 +321,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     public void visitVarInsn(final int opcode, final int var) {
+         super.visitVarInsn(opcode, var);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             switch (opcode) {
+                 case ILOAD:
+                 case FLOAD:
+@@ -350,7 +357,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     {
+         mv.visitFieldInsn(opcode, owner, name, desc);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             char c = desc.charAt(0);
+             boolean longOrDouble = c == 'J' || c == 'D';
+             switch (opcode) {
+@@ -385,7 +392,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     public void visitIntInsn(final int opcode, final int operand) {
+         mv.visitIntInsn(opcode, operand);
+ 
+-        if (constructor && opcode!=NEWARRAY) {
++        if (!initialized && opcode!=NEWARRAY) {
+             pushValue(OTHER);
+         }
+     }
+@@ -393,7 +400,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     public void visitLdcInsn(final Object cst) {
+         mv.visitLdcInsn(cst);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             pushValue(OTHER);
+             if (cst instanceof Double || cst instanceof Long) {
+                 pushValue(OTHER);
+@@ -404,7 +411,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     public void visitMultiANewArrayInsn(final String desc, final int dims) {
+         mv.visitMultiANewArrayInsn(desc, dims);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             for (int i = 0; i < dims; i++) {
+                 popValue();
+             }
+@@ -416,7 +423,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+         mv.visitTypeInsn(opcode, type);
+ 
+         // ANEWARRAY, CHECKCAST or INSTANCEOF don't change stack
+-        if (constructor && opcode == NEW) {
++        if (!initialized && opcode == NEW) {
+             pushValue(OTHER);
+         }
+     }
+@@ -427,9 +434,8 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+         final String name,
+         final String desc)
+     {
+-        mv.visitMethodInsn(opcode, owner, name, desc);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             Type[] types = Type.getArgumentTypes(desc);
+             for (int i = 0; i < types.length; i++) {
+                 popValue();
+@@ -448,12 +454,16 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+ 
+                 case INVOKESPECIAL:
+                     Object type = popValue(); // objectref
+-                    if (type == THIS && !superInitialized) {
++                    if (type == THIS && "<init>".equals(name)) {
++                        if (owner.equals(className)) {
++                            visitThis(opcode, owner, name, desc);
++                        } else {
++                            visitSuper(opcode, owner, name, desc);
++                            superInitialized = true;
++                        }
+                         onMethodEnter();
+-                        superInitialized = true;
+-                        // once super has been initialized it is no longer
+-                        // necessary to keep track of stack state
+-                        constructor = false;
++                        initialized = true;
++                        return;
+                     }
+                     break;
+             }
+@@ -466,12 +476,13 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+                 }
+             }
+         }
++        mv.visitMethodInsn(opcode, owner, name, desc);
+     }
+ 
+     public void visitJumpInsn(final int opcode, final Label label) {
+         mv.visitJumpInsn(opcode, label);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             switch (opcode) {
+                 case IFEQ:
+                 case IFNE:
+@@ -511,7 +522,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     {
+         mv.visitLookupSwitchInsn(dflt, keys, labels);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             popValue();
+             addBranches(dflt, labels);
+         }
+@@ -525,7 +536,7 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     {
+         mv.visitTableSwitchInsn(min, max, dflt, labels);
+ 
+-        if (constructor) {
++        if (!initialized) {
+             popValue();
+             addBranches(dflt, labels);
+         }
+@@ -607,6 +618,19 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes
+     protected void onMethodExit(int opcode) {
+     }
+ 
++
++    protected void visitThis(int opcode, String owner, String name, 
++                             String desc) 
++    {
++        mv.visitMethodInsn(opcode, owner, name, desc);
++    }
++
++    protected void visitSuper(int opcode, String owner, String name, 
++                              String desc) 
++    {
++        mv.visitMethodInsn(opcode, owner, name, desc);
++    }
++
+     // TODO onException, onMethodCall
+ 
+ }
+--- a/src/org/objectweb/asm/util/CheckClassAdapter.java
++++ b/src/org/objectweb/asm/util/CheckClassAdapter.java
+@@ -31,6 +31,7 @@ package org.objectweb.asm.util;
+ 
+ import java.io.FileInputStream;
+ import java.io.PrintWriter;
++import java.util.ArrayList;
+ import java.util.List;
+ 
+ import org.objectweb.asm.AnnotationVisitor;
+@@ -184,12 +185,19 @@ public class CheckClassAdapter extends ClassAdapter {
+         Type syperType = cn.superName == null
+                 ? null
+                 : Type.getObjectType(cn.superName);
++
++        List interfaces = cn.interfaces;
++        List ifaceTypes = new ArrayList();
++
++        for (int i = 0; i < interfaces.size(); i++)
++            ifaceTypes.add(Type.getObjectType((String) interfaces.get(i)));
++
+         List methods = cn.methods;
+         for (int i = 0; i < methods.size(); ++i) {
+             MethodNode method = (MethodNode) methods.get(i);
+             Analyzer a = new Analyzer(new SimpleVerifier(Type.getObjectType(cn.name),
+-                    syperType,
+-                    false));
++                            syperType, ifaceTypes, false));
++                        
+             try {
+                 a.analyze(cn.name, method);
+                 if (!dump) {
+diff --git a/test/conform/org/objectweb/asm/commons/AdviceAdapterTest.java b/test/conform/org/objectweb/asm/commons/AdviceAdapterTest.java
+index e75380b..a695b0d 100644
+--- a/test/conform/org/objectweb/asm/commons/AdviceAdapterTest.java
++++ b/test/conform/org/objectweb/asm/commons/AdviceAdapterTest.java
+@@ -95,11 +95,24 @@ public class AdviceAdapterTest extends AbstractTest {
+     }
+ 
+     static class AdviceClassAdapter extends ClassAdapter {
++        private String cname;
+ 
+         public AdviceClassAdapter(final ClassVisitor cv) {
+             super(cv);
+         }
+ 
++        public void visit(
++            final int version,
++            final int access,
++            final String name,
++            final String signature,
++            final String superName,
++            final String[] interfaces)
++        {
++            this.cname = name;
++            super.visit(version, access, name, signature, superName, interfaces);
++        }
++
+         public MethodVisitor visitMethod(
+             final int access,
+             final String name,
+@@ -119,7 +132,7 @@ public class AdviceAdapterTest extends AbstractTest {
+                 return mv;
+             }
+ 
+-            return new AdviceAdapter(mv, access, name, desc) {
++            return new AdviceAdapter(mv, cname, access, name, desc) {
+                 protected void onMethodEnter() {
+                     // mv.visitInsn(NOP);
+                     // mv.visitInsn(NOP);
+diff --git a/test/conform/org/objectweb/asm/commons/AdviceAdapterUnitTest.java b/test/conform/org/objectweb/asm/commons/AdviceAdapterUnitTest.java
+index 5b557fc..9b08bd6 100644
+--- a/test/conform/org/objectweb/asm/commons/AdviceAdapterUnitTest.java
++++ b/test/conform/org/objectweb/asm/commons/AdviceAdapterUnitTest.java
+@@ -148,7 +148,7 @@ public class AdviceAdapterUnitTest extends AbstractTest {
+                 return mv;
+             }
+ 
+-            return new AdviceAdapter(mv, access, name, desc) {
++            return new AdviceAdapter(mv, cname, access, name, desc) {
+                 protected void onMethodEnter() {
+                     mv.visitLdcInsn(cname + "." + name + desc);
+                     mv.visitMethodInsn(INVOKESTATIC,

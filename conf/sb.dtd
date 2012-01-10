@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!ELEMENT sb-config (license-server, (policy | filter | whitelist)*)>
+
+<!ELEMENT license-server EMPTY>
+<!ATTLIST license-server
+ host              CDATA #REQUIRED 
+ port              CDATA #IMPLIED
+>
+
+<!ENTITY % attacks "exec|file|sql|xss">
+<!ELEMENT policy EMPTY>
+<!ATTLIST policy 
+  type                       (%attacks;) #REQUIRED
+  enabled                    (true|false) "true"
+  log-attack                 (true|false) "true"
+  log-vuln                   (true|false) "true"
+>
+
+<!ELEMENT filter EMPTY>
+<!ATTLIST filter
+  type               (xss) #REQUIRED
+  class              CDATA #REQUIRED 
+  method             CDATA "*"
+>
+
+<!ELEMENT whitelist EMPTY>
+<!ATTLIST whitelist
+  type              (%attacks;)          #REQUIRED
+  class              CDATA               #REQUIRED 
+  method             CDATA               "*"
+>
