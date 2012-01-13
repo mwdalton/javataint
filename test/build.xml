@@ -1,4 +1,4 @@
-<project name="java-siegebreaker-test" default="run-tests">
+<project name="java-taint-test" default="run-tests">
 
   <property name="test.string" value="**/StringTest.java **/TaintTest.java"/>
   <property name="test.sql" value="**/HypersonicSqlTest.java **/MySqlTest.java **/PostgreSqlTest.java **/Db2SqlTest.java **/DerbySqlTest.java **/OracleSqlTest.java"/>
@@ -11,13 +11,13 @@
       <sequential>
         <mkdir dir="${test.build.src}/@{version}"/>
         <copy todir="${test.build.src}/@{version}">
-          <filterset refid="sb-defines"/>
+          <filterset refid="jt-defines"/>
           <filterset refid="jre-@{version}"/>
           <filterset refid="str-@{version}"/>
           <fileset dir="${test.src}" excludes="**/*Java1.?.java"/>
         </copy>
         <copy todir="${test.build.src}/@{version}">
-          <filterset refid="sb-defines"/>
+          <filterset refid="jt-defines"/>
           <filterset refid="jre-@{version}"/>
           <filterset refid="str-@{version}"/>
           <fileset dir="${test.src}" includes="**/*Java@{version}.java"/>
@@ -37,15 +37,15 @@
       <attribute name="java-exec"/>
       <sequential>
         <mkdir dir="${test.lib}"/>
-        <java jar="${dist.files}/sb-bootstrap.jar" fork="true"
+        <java jar="${dist.files}/jt-bootstrap.jar" fork="true"
               jvm="@{java-exec}" failonerror="true">
           <arg value="-d"/>
           <arg value="-j"/>
-          <arg path="${test.lib}/sb-bootlib@{version}.jar"/>
+          <arg path="${test.lib}/jt-bootlib@{version}.jar"/>
           <arg value="-r14"/>
-          <arg path="${dist.files}/sb-rt1.4.jar"/>
+          <arg path="${dist.files}/jt-rt1.4.jar"/>
           <arg value="-r15"/>
-          <arg path="${dist.files}/sb-rt1.5.jar"/>
+          <arg path="${dist.files}/jt-rt1.5.jar"/>
         </java>
       </sequential>
     </macrodef>
@@ -69,21 +69,21 @@
       <attribute name="java-exec"/>
       <sequential>
         <mkdir dir="${test.build}/@{version}/mockobj/string/java/lang"/>
-        <java classname="com.siegebrk.RemappingStringClassAdapter" fork="true"
+        <java classname="jtaint.RemappingStringClassAdapter" fork="true"
               jvm="@{java-exec}" failonerror="true"
               classpath="${test.build}/remap:${asm.classpath}:${log4j.path}:${build.common}">
           <arg path="${test.build}/@{version}/mockobj/string/java/lang"/>
         </java>
 
-        <mkdir dir="${test.build}/@{version}/mockobj/log/com/siegebrk"/>
-        <mkdir dir="${test.build}/@{version}/mockobj/xss/com/siegebrk"/>
-        <java classname="com.siegebrk.RemappingMiscClassAdapter" fork="true"
+        <mkdir dir="${test.build}/@{version}/mockobj/log/jtaint"/>
+        <mkdir dir="${test.build}/@{version}/mockobj/xss/jtaint"/>
+        <java classname="jtaint.RemappingMiscClassAdapter" fork="true"
               jvm="@{java-exec}" failonerror="true"
               classpath="${test.build}/remap:${asm.classpath}:${log4j.path}:${build.common}">
-          <jvmarg value="-Xbootclasspath/p:${test.lib}/sb-bootlib@{version}.jar"/>
-          <jvmarg value="-Dsiegebreaker.loglog.level=error"/>
-          <arg path="${test.build}/@{version}/mockobj/log/com/siegebrk"/>
-          <arg path="${test.build}/@{version}/mockobj/xss/com/siegebrk"/>
+          <jvmarg value="-Xbootclasspath/p:${test.lib}/jt-bootlib@{version}.jar"/>
+          <jvmarg value="-Djavataint.loglog.level=error"/>
+          <arg path="${test.build}/@{version}/mockobj/log/jtaint"/>
+          <arg path="${test.build}/@{version}/mockobj/xss/jtaint"/>
         </java>
       </sequential>
     </macrodef>
@@ -103,7 +103,7 @@
                destdir="${test.build}/@{version}/common"
                source="@{version}" target="@{version}"
                fork="true" executable="@{javac-exec}" debug="on">
-          <compilerarg value="-Xbootclasspath/p:${test.lib}/sb-bootlib@{version}.jar"/>
+          <compilerarg value="-Xbootclasspath/p:${test.lib}/jt-bootlib@{version}.jar"/>
         </javac>
       </sequential>
     </macrodef>
@@ -124,7 +124,7 @@
                source="@{version}" target="@{version}" fork="true"
                classpath="${test.build}/@{version}/common:${test.build}/@{version}/mockobj/@{mockdir}"
                executable="@{javac-exec}" debug="on">
-          <compilerarg value="-Xbootclasspath/p:${test.lib}/sb-bootlib@{version}.jar"/>
+          <compilerarg value="-Xbootclasspath/p:${test.lib}/jt-bootlib@{version}.jar"/>
         </javac>
       </sequential>
     </macrodef>
@@ -160,26 +160,26 @@
       <attribute name="java-exec"/>
       <sequential>
         <mkdir dir="${test.lib}"/>
-        <java jar="${dist.files}/sb-bootstrap.jar" fork="true"
+        <java jar="${dist.files}/jt-bootstrap.jar" fork="true"
               jvm="@{java-exec}" failonerror="true">
           <arg value="-d"/>
           <arg value="-j"/>
-          <arg path="${test.lib}/sb-sql-mockobj-core-bootlib@{version}.jar"/>
+          <arg path="${test.lib}/jt-sql-mockobj-core-bootlib@{version}.jar"/>
           <arg value="-r14"/>
-          <arg path="${dist.files}/sb-rt1.4.jar"/>
+          <arg path="${dist.files}/jt-rt1.4.jar"/>
           <arg value="-r15"/>
-          <arg path="${dist.files}/sb-rt1.5.jar"/>
+          <arg path="${dist.files}/jt-rt1.5.jar"/>
           <jvmarg value="-Xbootclasspath/p:${test.build}/@{version}/lib/mockobj/sql"/>
         </java>
 
-        <jar destfile="${test.lib}/sb-sql-mockobj-bootlib@{version}.jar">
+        <jar destfile="${test.lib}/jt-sql-mockobj-bootlib@{version}.jar">
           <fileset dir="${test.build}/@{version}/mockobj/sql"
                    includes="java/sql/** javax/sql/**"
                    excludes="java/sql/Connection.class"/>
-          <zipfileset src="${test.lib}/sb-sql-mockobj-core-bootlib@{version}.jar"/>
+          <zipfileset src="${test.lib}/jt-sql-mockobj-core-bootlib@{version}.jar"/>
         </jar>
 
-        <delete dir="${test.lib}" includes="sb-sql-mockobj-core-bootlib*.jar"/>
+        <delete dir="${test.lib}" includes="jt-sql-mockobj-core-bootlib*.jar"/>
       </sequential>
     </macrodef>
 
@@ -200,7 +200,7 @@
                debug="on" classpath="${test.build}/@{version}/common"
                executable="@{javac-exec}" source="@{version}" 
                target="@{version}">
-         <compilerarg value="-Xbootclasspath/p:${test.build}/@{version}/mockobj/log:${test.lib}/sb-bootlib@{version}.jar"/>
+         <compilerarg value="-Xbootclasspath/p:${test.build}/@{version}/mockobj/log:${test.lib}/jt-bootlib@{version}.jar"/>
        </javac>
      </sequential>
    </macrodef>
@@ -224,7 +224,7 @@
                classpath="${test.build}/@{version}/common:"
                executable="@{javac-exec}" source="@{version}" 
                target="@{version}">
-         <compilerarg value="-Xbootclasspath/p:${test.build}/@{version}/mockobj/log:@{classpath}:${test.lib}/sb-bootlib@{version}.jar"/>
+         <compilerarg value="-Xbootclasspath/p:${test.build}/@{version}/mockobj/log:@{classpath}:${test.lib}/jt-bootlib@{version}.jar"/>
        </javac>
      </sequential>
    </macrodef>
@@ -241,7 +241,7 @@
                           classpath="${test.build}/@{version}/mockobj/servlet"
                           version="@{version}" javac-exec="@{javac-exec}"/>
        <do-compile-mockobj-tests tests="${test.sql}" 
-                          classpath="${test.lib}/sb-sql-mockobj-bootlib@{version}.jar:${test.build}/@{version}/mockobj/sql"
+                          classpath="${test.lib}/jt-sql-mockobj-bootlib@{version}.jar:${test.build}/@{version}/mockobj/sql"
                           version="@{version}" javac-exec="@{javac-exec}"/> 
        <do-compile-mockobj-tests tests="${test.xss}" 
                           classpath="${test.build}/@{version}/mockobj/servlet:${test.build}/@{version}/mockobj/xss"

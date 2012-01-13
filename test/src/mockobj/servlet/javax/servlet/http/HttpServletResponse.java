@@ -2,7 +2,7 @@
 
 package javax.servlet.http;
 
-import com.siegebrk.SafeRandom;
+import jtaint.SafeRandom;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

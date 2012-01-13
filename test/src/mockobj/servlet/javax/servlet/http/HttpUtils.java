@@ -31,7 +31,7 @@ import java.io.IOException;
  *
 */
 
-import com.siegebrk.TestUtil;
+import jtaint.TestUtil;
 
 public class HttpUtils {
     private static StringBuffer url;

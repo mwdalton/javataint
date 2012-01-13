@@ -4,7 +4,7 @@
 log4j.rootLogger=warning, A1
 
 log4j.appender.A1=org.apache.log4j.RollingFileAppender
-log4j.appender.A1.File=@install@/siegebrk.log
+log4j.appender.A1.File=@install@/jtaint.log
 
 log4j.appender.A1.MaxFileSize=100KB
 log4j.appender.A1.MaxBackupIndex=5

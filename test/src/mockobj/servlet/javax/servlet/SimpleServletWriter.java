@@ -2,8 +2,8 @@
 
 package javax.servlet;
 
-import com.siegebrk.HtmlValidator;
-import com.siegebrk.Log;
+import jtaint.HtmlValidator;
+import jtaint.Log;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

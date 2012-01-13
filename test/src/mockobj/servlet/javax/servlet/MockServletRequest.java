@@ -2,7 +2,7 @@
 
 package javax.servlet;
 
-import com.siegebrk.TestUtil;
+import jtaint.TestUtil;
 
 import java.util.Enumeration;
 import java.util.Hashtable;

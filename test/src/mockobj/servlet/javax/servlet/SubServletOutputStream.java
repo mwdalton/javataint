@@ -2,7 +2,7 @@
 
 package javax.servlet;
 
-import com.siegebrk.Log;
+import jtaint.Log;
 
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;

@@ -8,7 +8,7 @@ source version.sh
 
 while [ $fail -ne 1 -a $i -lt $MAX_ITER ] 
 do
-        java $VER_FLAGS -cp /home/mwdalton/java-siegebrk/test/build/${VER}/common:/home/mwdalton/java-siegebrk/test/build/${VER}/tests:/home/mwdalton/java-siegebrk/test/build/${VER}/mockobj/servlet com.siegebrk.ServletTest  -n 1024 -l 256
+        java $VER_FLAGS -cp /home/mwdalton/java-taint/test/build/${VER}/common:/home/mwdalton/java-taint/test/build/${VER}/tests:/home/mwdalton/java-taint/test/build/${VER}/mockobj/servlet jtaint.ServletTest  -n 1024 -l 256
         if [ $? -ne 0 ]
         then
                 echo "FAILURE"

@@ -13,5 +13,5 @@ elif [ -n "$is15" ]; then
 else 
     VER="1.6"
 fi
-VER_FLAGS="-Xbootclasspath/p:/home/mwdalton/java-siegebrk/test/build/${VER}/mockobj/log ${VER_FLAGS}"
+VER_FLAGS="-Xbootclasspath/p:/home/mwdalton/java-taint/test/build/${VER}/mockobj/log ${VER_FLAGS}"
 echo "Java Version ${VER} Flags ${VER_FLAGS}"

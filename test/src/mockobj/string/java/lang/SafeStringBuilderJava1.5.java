@@ -2,8 +2,8 @@
 package java.lang;
 
 import java.util.BitSet;
-import com.siegebrk.SafeTaint;
-import com.siegebrk.Taint;
+import jtaint.SafeTaint;
+import jtaint.Taint;
 
 public final class SafeStringBuilder
     implements SafeCharSequence

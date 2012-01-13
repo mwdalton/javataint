@@ -3,9 +3,9 @@
 
 package javax.servlet.http;
 
-import com.siegebrk.SafeRandom;
-import com.siegebrk.SiegeBrkException;
-import com.siegebrk.TestUtil;
+import jtaint.SafeRandom;
+import jtaint.JTaintException;
+import jtaint.TestUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,13 +14,13 @@ public class MockHttpServlet extends HttpServlet
 {
     private static final Map EMPTY_WHITELIST = new HashMap();
 
-    private boolean sbExcpt, rtExcpt;
+    private boolean jtExcpt, rtExcpt;
     private final TestUtil tu;
 
     public MockHttpServlet(TestUtil tu) { this.tu = tu; }
 
     public boolean pendingRuntimeException() { return rtExcpt; }
-    public boolean pendingSiegeBrkException() { return sbExcpt; }
+    public boolean pendingJTaintException() { return jtExcpt; }
 
     public void process(HttpServletRequest req, HttpServletResponse res) {
         SafeRandom sr = tu.rand();
@@ -44,14 +44,14 @@ public class MockHttpServlet extends HttpServlet
 
         if (sr.nextInt(16) == 0) {
             if (sr.nextBoolean()) {
-                sbExcpt = true;
-                throw new SiegeBrkException("test-siege", EMPTY_WHITELIST);
+                jtExcpt = true;
+                throw new JTaintException("test-jt", EMPTY_WHITELIST);
             } else {
                 rtExcpt = true;
-                throw new RuntimeException("test-nosiege");
+                throw new RuntimeException("test-nojt");
             }
         }
     }
 
-    public void clearAllExceptions() { rtExcpt = sbExcpt = false; }
+    public void clearAllExceptions() { rtExcpt = jtExcpt = false; }
 }

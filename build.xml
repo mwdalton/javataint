@@ -1,4 +1,4 @@
-<project name="java-siegebreaker" default="release-unix">
+<project name="java-taint" default="release-unix">
  
   <property name="conf" value="${basedir}/conf"/>
   <property name="build" value="${basedir}/build"/>
@@ -28,11 +28,11 @@
 
   <property file="build.config"/>
 
-  <property name="sb.version" value="0.9"/>
-  <property name="sb.internal.prefix" value="$com_siegebrk_$"/>
-  <filterset id="sb-defines">
-    <filter token="version" value="${sb.version}"/>
-    <filter token="internal" value="${sb.internal.prefix}"/>
+  <property name="jt.version" value="0.9"/>
+  <property name="jt.internal.prefix" value="$_jtaint_$"/>
+  <filterset id="jt-defines">
+    <filter token="version" value="${jt.version}"/>
+    <filter token="internal" value="${jt.internal.prefix}"/>
   </filterset>
 
   <import file="version.xml"/>
@@ -52,15 +52,15 @@
 
     <copy todir="${build.src}">
       <fileset dir="${src}" excludes="rt/**"/>
-      <filterset refid="sb-defines"/>
+      <filterset refid="jt-defines"/>
       <filterset> 
         <filter token="builder" value="StringBuilder"/>
       </filterset>
     </copy>
 
-    <copy file="${src}/bootstrap/com/siegebrk/StringBuilderAdapter.java"
-          tofile="${build.src.bootstrap}/com/siegebrk/StringBufferAdapter.java">
-      <filterset refid="sb-defines"/>
+    <copy file="${src}/bootstrap/jtaint/StringBuilderAdapter.java"
+          tofile="${build.src.bootstrap}/jtaint/StringBufferAdapter.java">
+      <filterset refid="jt-defines"/>
       <filterset>
         <filter token="builder" value="StringBuffer"/>
       </filterset>
@@ -74,7 +74,7 @@
         <mkdir dir="${build.src.rt}/@{version}"/>
         <copy todir="${build.src.rt}/@{version}">
           <fileset dir="${src}/rt"/>
-          <filterset refid="sb-defines"/>
+          <filterset refid="jt-defines"/>
           <filterset refid="jre-@{version}"/>
           <filterset refid="str-@{version}"/>
         </copy>
@@ -108,11 +108,11 @@
 
   <target name="dist-bootstrap" depends="compile-bootstrap">
     <mkdir dir="${dist.files}"/>
-    <jarjar destfile="${dist.files}/sb-bootstrap.jar">
+    <jarjar destfile="${dist.files}/jt-bootstrap.jar">
       <fileset dir="${build.bootstrap}" excludes="**/JarMerger.class"/>
       <fileset dir="${build.common}"/>
       <rule pattern="org.objectweb.asm.**" 
-             result="com.siegebrk.org.objectweb.asm.@1"/>
+             result="jtaint.org.objectweb.asm.@1"/>
 
       <zipfileset src="${asm-core.path}"/>
       <zipfileset src="${asm-commons.path}"/>
@@ -121,24 +121,24 @@
       <zipfileset src="${asm-analysis.path}"/>
 
       <manifest>
-        <attribute name="Main-Class" value="com.siegebrk.Bootstrap"/>
-	<attribute name="Implementation-Title" value="SiegeBreaker Bootstrap"/>
-	<attribute name="Implementation-Version" value="${sb.version}"/> 
-	<attribute name="Implementation-Vendor" value="SiegeBreaker"/>
+        <attribute name="Main-Class" value="jtaint.Bootstrap"/>
+	<attribute name="Implementation-Title" value="JavaTaint Bootstrap"/>
+	<attribute name="Implementation-Version" value="${jt.version}"/> 
+	<attribute name="Implementation-Vendor" value="JavaTaint"/>
       </manifest>
     </jarjar>
   </target>
 
   <target name="dist-jarmerger" depends="compile-bootstrap">
     <mkdir dir="${dist.files}"/>
-    <jar destfile="${dist.files}/sb-jarmerger.jar"
+    <jar destfile="${dist.files}/jt-jarmerger.jar"
          basedir="${build.bootstrap}"
          includes="**/JarMerger.class">
       <manifest>
-        <attribute name="Main-Class" value="com.siegebrk.JarMerger"/>
-        <attribute name="Implementation-Title" value="SiegeBreaker JarMerger"/>
-        <attribute name="Implementation-Version" value="${sb.version}"/> 
-        <attribute name="Implementation-Vendor" value="SiegeBreaker"/>
+        <attribute name="Main-Class" value="jtaint.JarMerger"/>
+        <attribute name="Implementation-Title" value="JavaTaint JarMerger"/>
+        <attribute name="Implementation-Version" value="${jt.version}"/> 
+        <attribute name="Implementation-Vendor" value="JavaTaint"/>
       </manifest>
     </jar>
   </target>
@@ -150,11 +150,11 @@
       <attribute name="java-exec"/>
       <attribute name="version"/>
       <sequential>
-        <java jar="${dist.files}/sb-bootstrap.jar" fork="true"
+        <java jar="${dist.files}/jt-bootstrap.jar" fork="true"
               jvm="@{java-exec}">
           <arg value="-d"/>
           <arg value="-j"/>
-          <arg path="${build.lib}/sb-bootlib@{version}.jar"/>
+          <arg path="${build.lib}/jt-bootlib@{version}.jar"/>
         </java>
       </sequential>
     </macrodef>
@@ -175,7 +175,7 @@
                executable="@{javac-exec}"
                classpath="${asm.classpath.notree}:${log4j.path}:${build.common}">
           <compilerarg 
-              value="-Xbootclasspath/p:${build.lib}/sb-bootlib@{version}.jar"/>
+              value="-Xbootclasspath/p:${build.lib}/jt-bootlib@{version}.jar"/>
         </javac>
       </sequential>
     </macrodef>
@@ -190,13 +190,13 @@
     <macrodef name="do-dist-rtlib">
       <attribute name="version"/>
       <sequential>
-        <jarjar destfile="${dist.files}/sb-rt@{version}.jar">
+        <jarjar destfile="${dist.files}/jt-rt@{version}.jar">
           <fileset dir="${build.rt}/@{version}"/>
           <fileset dir="${build.common}"/>
           <rule pattern="org.objectweb.asm.**" 
-                result="com.siegebrk.org.objectweb.asm.@1"/>
+                result="jtaint.org.objectweb.asm.@1"/>
           <rule pattern="org.apache.log4j.**" 
-                result="com.siegebrk.org.apache.log4j.@1"/>
+                result="jtaint.org.apache.log4j.@1"/>
 
           <zipfileset src="${asm-core.path}"/>
           <zipfileset src="${asm-commons.path}"/>
@@ -205,9 +205,9 @@
 
           <manifest>
   	    <attribute name="Implementation-Title" 
-                       value="SiegeBreaker Runtime"/>
-	    <attribute name="Implementation-Version" value="${sb.version}"/> 
-	    <attribute name="Implementation-Vendor" value="SiegeBreaker"/>
+                       value="JavaTaint Runtime"/>
+	    <attribute name="Implementation-Version" value="${jt.version}"/> 
+	    <attribute name="Implementation-Vendor" value="JavaTaint"/>
             <attribute name="Specification-Version" value="@{version}"/>
           </manifest>
         </jarjar>
@@ -221,30 +221,30 @@
   <target name="dist-install" depends="prepare-nort-src">
    <copy todir="${dist.files}">
      <fileset dir="${build.src.install.unix}"/>
-     <filterset refid="sb-defines"/>
+     <filterset refid="jt-defines"/>
    </copy>
   </target>
 
   <target name="release-unix" depends="dist-rtlib, dist-install, dist-conf">
     <mkdir dir="${dist.release}"/>
-    <tar destfile="${dist.release}/siegebreaker-${sb.version}.tar.gz"
+    <tar destfile="${dist.release}/javataint-${jt.version}.tar.gz"
          compression="gzip">
-      <tarfileset dir="${dist.files}" prefix="siegebreaker-${sb.version}"
+      <tarfileset dir="${dist.files}" prefix="javataint-${jt.version}"
                   excludes="*.sh *.csh" filemode="600" username="root" 
                   group="root" uid="0" gid="0"/>
-      <tarfileset dir="${dist.files}" prefix="siegebreaker-${sb.version}"
+      <tarfileset dir="${dist.files}" prefix="javataint-${jt.version}"
                   includes="*.sh *.csh" filemode="700" username="root"
                   group="root" uid="0" gid="0"/>
     </tar>
   </target>
 
-  <target name="install-siegebrk" depends="release-unix">
-    <macrodef name="do-install-siegebrk">
+  <target name="install-jtaint" depends="release-unix">
+    <macrodef name="do-install-jtaint">
       <attribute name="java-home"/>
       <attribute name="version"/>
       <sequential>
         <mkdir dir="${install.path}/@{version}"/>
-        <exec executable="${dist.release}/siegebreaker-${sb.version}/install.sh"
+        <exec executable="${dist.release}/javataint-${jt.version}/install.sh"
               failonerror="true">
           <arg value="-b"/>
           <arg path="@{java-home}"/>
@@ -254,13 +254,13 @@
       </sequential>
     </macrodef>
 
-    <untar src="${dist.release}/siegebreaker-${sb.version}.tar.gz"
+    <untar src="${dist.release}/javataint-${jt.version}.tar.gz"
            dest="${dist.release}" compression="gzip"/>
-    <chmod file="${dist.release}/siegebreaker-${sb.version}/install.sh"
+    <chmod file="${dist.release}/javataint-${jt.version}/install.sh"
            perm="700"/>
-    <do-install-siegebrk java-home="${java14.home}" version="1.4"/>
-    <do-install-siegebrk java-home="${java15.home}" version="1.5"/>
-    <do-install-siegebrk java-home="${java16.home}" version="1.6"/>
+    <do-install-jtaint java-home="${java14.home}" version="1.4"/>
+    <do-install-jtaint java-home="${java15.home}" version="1.5"/>
+    <do-install-jtaint java-home="${java16.home}" version="1.6"/>
   </target>
 
   <target name="test" depends="release-unix">

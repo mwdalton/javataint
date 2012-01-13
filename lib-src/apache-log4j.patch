@@ -1,9 +1,5 @@
-diff --git a/log4j-1.2.15.jar b/log4j-1.2.15.jar
-deleted file mode 100644
-index c930a6a..0000000
-Binary files a/log4j-1.2.15.jar and /dev/null differ
 diff --git a/src/main/java/org/apache/log4j/LogManager.java b/src/main/java/org/apache/log4j/LogManager.java
-index 199d15f..12b09f4 100644
+index 199d15f..4c78cfc 100644
 --- a/src/main/java/org/apache/log4j/LogManager.java
 +++ b/src/main/java/org/apache/log4j/LogManager.java
 @@ -27,10 +27,14 @@ import org.apache.log4j.helpers.Loader;
@@ -96,7 +92,7 @@ index 199d15f..12b09f4 100644
 +    // "log4j.properties"
 +    
 +    try {
-+        String logLevel = System.getProperty("siegebreaker.loglog.level");
++        String logLevel = System.getProperty("javataint.loglog.level");
 +        if ("debug".equals(logLevel)) 
 +            LogLog.setInternalDebugging(true);
 +        else if ("error".equals(logLevel))
@@ -104,19 +100,19 @@ index 199d15f..12b09f4 100644
 +        else if ("off".equals(logLevel))
 +            LogLog.setQuietMode(true);
 +        else if(!"warning".equals(logLevel) && logLevel != null)
-+            LogLog.warn("Property siegebreaker.loglog.level has unknown value "
++            LogLog.warn("Property javataint.loglog.level has unknown value "
 +                         + logLevel);
 +
 +        ClassLoader cl = ClassLoader.getSystemClassLoader();
-+        InputStream is = cl.getResourceAsStream("com/siegebrk/InstallPath");
++        InputStream is = cl.getResourceAsStream("jtaint/InstallPath");
 +        if (is == null)
-+            throw new RuntimeException("SiegeBreaker installation corrupted");
++            throw new RuntimeException("JavaTaint installation corrupted");
 +        BufferedReader br = new BufferedReader(new InputStreamReader(is));
 +        base = br.readLine();
 +        br.close();
 +
 +        if (base == null)
-+            throw new RuntimeException("Could not find SiegeBreaker install");
++            throw new RuntimeException("Could not find JavaTaint install");
 +        File f = new File(base+File.separator+DEFAULT_XML_CONFIGURATION_FILE);
 +        if (f.exists())
 +            url = f.toURL();
@@ -159,7 +155,7 @@ index 199d15f..12b09f4 100644
    /**
       Sets <code>LoggerFactory</code> but only if the correct
 diff --git a/src/main/java/org/apache/log4j/helpers/Loader.java b/src/main/java/org/apache/log4j/helpers/Loader.java
-index f32ca84..7b111ad 100644
+index f32ca84..37e3b8b 100644
 --- a/src/main/java/org/apache/log4j/helpers/Loader.java
 +++ b/src/main/java/org/apache/log4j/helpers/Loader.java
 @@ -39,7 +39,7 @@ public class Loader  {
@@ -191,7 +187,7 @@ index f32ca84..7b111ad 100644
      // Just call Class.forName(clazz) if we are running under JDK 1.1
      // or if we are instructed to ignore the TCL.
 +
-+    clazz = "com.siegebrk." + clazz;
++    clazz = "jtaint." + clazz;
      if(java1 || ignoreTCL) {
        return Class.forName(clazz);
      } else {

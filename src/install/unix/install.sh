@@ -100,7 +100,7 @@ if [ -n `dirname "$0"` ]; then
 fi
 scriptdir=`pwd -P`
 
-echo "Welcome to SiegeBreaker @version@"
+echo "Welcome to JavaTaint @version@"
 base=
 install=
 
@@ -108,7 +108,7 @@ while [ $# -gt 0 ]; do
     case "$1" in 
         -b) base="$2"; shift;;
         -i) install="$2"; shift;;
-         *) echo "Usage: $0 [-b <java home directory>] [-i <siegebreaker install directory>]"; exit 1;;
+         *) echo "Usage: $0 [-b <java home directory>] [-i <javataint install directory>]"; exit 1;;
     esac
     shift;
 done
@@ -138,46 +138,46 @@ base=`resolve_symlink "$base"`
 verify_java "$base"
 
 if [ -z "${install}" ]; then
-    echo "Where would you like to install SiegeBreaker?"
-    echo -n "[/usr/local/siegebrk] "
+    echo "Where would you like to install JavaTaint?"
+    echo -n "[/usr/local/jtaint] "
     read install
 fi
 
 if [ -z "$install" ]; then
-    install="/usr/local/siegebrk"
+    install="/usr/local/jtaint"
 fi
 
-mkdir -p "${install}/sb_java" || { echo "Could not create ${install}" >&2 ; \
+mkdir -p "${install}/jt_java" || { echo "Could not create ${install}" >&2 ; \
                                    exit 1; }
 
 echo "Copying Java installation from ${base} to ${install}"
-clone_files "${base}" "${install}/sb_java"
-echo "Installing SiegeBreaker in ${install}"
+clone_files "${base}" "${install}/jt_java"
+echo "Installing JavaTaint in ${install}"
 export JAVA_HOME=$base
 export JRE_HOME=$base
 outname=out$$.jar
 trap "rm -f ${scriptdir}/${outname}; exit 1" HUP INT QUIT TERM
 
-"${base}/${JAVA_BIN}" -jar "${scriptdir}/sb-bootstrap.jar" \
+"${base}/${JAVA_BIN}" -jar "${scriptdir}/jt-bootstrap.jar" \
     -i "${install}" \
-    -r14 "${scriptdir}/sb-rt1.4.jar" -r15 "${scriptdir}/sb-rt1.5.jar" \
-    -j "${scriptdir}/sb-bootlib.jar" || exit 1
+    -r14 "${scriptdir}/jt-rt1.4.jar" -r15 "${scriptdir}/jt-rt1.5.jar" \
+    -j "${scriptdir}/jt-bootlib.jar" || exit 1
 
-"${base}/${JAVA_BIN}" -jar "${scriptdir}/sb-jarmerger.jar" \
-    "${base}/${RT_JAR}" "${scriptdir}/sb-bootlib.jar" \
+"${base}/${JAVA_BIN}" -jar "${scriptdir}/jt-jarmerger.jar" \
+    "${base}/${RT_JAR}" "${scriptdir}/jt-bootlib.jar" \
     "${scriptdir}/${outname}" || exit 1
 
-mv "${scriptdir}/${outname}" "${install}/sb_java/${RT_JAR}"
+mv "${scriptdir}/${outname}" "${install}/jt_java/${RT_JAR}"
 
-cp "${scriptdir}/sb.dtd" "${install}"
-sed -e "s|@install@|${install}|g" <  "${scriptdir}/sb-config.xml.example" \
-        > "${install}/sb-config.xml.example"
+cp "${scriptdir}/jt.dtd" "${install}"
+sed -e "s|@install@|${install}|g" <  "${scriptdir}/jt-config.xml.example" \
+        > "${install}/jt-config.xml.example"
 sed -e "s|@install@|${install}|g" <  "${scriptdir}/log4j.properties.example" \
         > "${install}/log4j.properties.example"
-sed -e "s|@install@|${install}|g" < "${scriptdir}/sb-env.sh"  \
-        > "${install}/sb-env.sh"
-sed -e "s|@install@|${install}|g" < "${scriptdir}/sb-env.csh"  \
-        > "${install}/sb-env.csh"
+sed -e "s|@install@|${install}|g" < "${scriptdir}/jt-env.sh"  \
+        > "${install}/jt-env.sh"
+sed -e "s|@install@|${install}|g" < "${scriptdir}/jt-env.csh"  \
+        > "${install}/jt-env.csh"
 
 #Unfortunately instrumenting rt.jar has various side effects. Certain 
 #files are generated at jdk install or build-time from rt.jar for caching 
@@ -194,4 +194,4 @@ do
     find "${install}" -name "$file" -exec rm -f '{}' \;
 done
 
-echo "SiegeBreaker installation complete"
+echo "JavaTaint installation complete"

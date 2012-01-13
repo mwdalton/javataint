@@ -63,7 +63,7 @@ import java.util.ResourceBundle;
 // so long as sun.servlet.* must run on older JDK 1.02 JVMs which
 // don't include that support.
 
-import com.siegebrk.TestUtil;
+import jtaint.TestUtil;
 
 public class Cookie {
     private String comment, domain, name, path, value;

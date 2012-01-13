@@ -9,8 +9,8 @@ import java.io.Writer;
 
 import java.util.Locale;
 
-import com.siegebrk.HtmlValidator;
-import com.siegebrk.Log;
+import jtaint.HtmlValidator;
+import jtaint.Log;
 
 public class ServletWriter extends SimpleServletWriter
 {

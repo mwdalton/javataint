@@ -16,7 +16,7 @@
 */
 package javax.servlet;
 
-import com.siegebrk.SafeRandom;
+import jtaint.SafeRandom;
 
 import java.io.IOException;
 import java.io.PrintWriter;

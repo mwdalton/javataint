@@ -1,9 +1,9 @@
 /* Copyright 2009 Michael Dalton */
 package java.lang;
 
-import com.siegebrk.OrigStringUtil;
-import com.siegebrk.SafeTaint;
-import com.siegebrk.Taint;
+import jtaint.OrigStringUtil;
+import jtaint.SafeTaint;
+import jtaint.Taint;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;

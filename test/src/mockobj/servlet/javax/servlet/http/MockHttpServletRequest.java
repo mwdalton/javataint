@@ -1,7 +1,7 @@
 /* Copyright 2009 Michael Dalton */
 package javax.servlet.http;
 
-import com.siegebrk.TestUtil;
+import jtaint.TestUtil;
 
 import java.util.Enumeration;
 import java.util.Hashtable;
